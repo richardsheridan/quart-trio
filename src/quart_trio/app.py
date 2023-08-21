@@ -245,8 +245,14 @@ class QuartTrio(Quart):
         async def _wrapper() -> None:
             try:
                 await copy_current_app_context(func)(*args, **kwargs)
-            except (BaseExceptionGroup, Exception) as error:
+            except Exception as error:
                 await self.handle_background_exception(error)  # type: ignore
+            except BaseExceptionGroup as error:
+                _, other_errors = error.split(trio.Cancelled)
+                if other_errors is None:
+                    raise
+                else:
+                    await self.handle_background_exception(error)  # type: ignore
 
         self.nursery.start_soon(_wrapper)
 
